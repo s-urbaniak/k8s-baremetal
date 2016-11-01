@@ -1,0 +1,157 @@
+---
+systemd:
+  units:
+    - name: etcd2.service
+      enable: true
+      dropins:
+        - name: 40-etcd-cluster.conf
+          contents: |
+            [Service]
+            Environment="ETCD_PROXY=on"
+            Environment="ETCD_LISTEN_CLIENT_URLS=http://0.0.0.0:2379"
+            Environment="ETCD_INITIAL_CLUSTER={{.etcd_initial_cluster}}"
+    - name: flanneld.service
+      dropins:
+        - name: 40-add-options.conf
+          contents: |
+            [Service]
+            EnvironmentFile=-/etc/flannel/options.env
+    - name: docker.service
+      dropins:
+        - name: 40-flannel.conf
+          contents: |
+            [Unit]
+            Requires=flanneld.service
+            After=flanneld.service
+            [Service]
+            EnvironmentFile=/etc/kubernetes/cni/docker_opts_cni.env
+    - name: k8s-certs@.service
+      contents: |
+        [Unit]
+        Description=Fetch Kubernetes certificate assets
+        Requires=network-online.target
+        After=network-online.target
+        [Service]
+        ExecStartPre=/usr/bin/mkdir -p /etc/kubernetes/ssl
+        ExecStart=/usr/bin/bash -c "[ -f /etc/kubernetes/ssl/%i ] || curl {{.k8s_cert_endpoint}}/tls/%i -o /etc/kubernetes/ssl/%i"
+    - name: k8s-assets.target
+      contents: |
+        [Unit]
+        Description=Load Kubernetes Assets
+        Requires=k8s-certs@kubeconfig.service
+        After=k8s-certs@kubeconfig.service
+    - name: kubelet.service
+      enable: true
+      contents: |
+        [Unit]
+        Description=Kubelet via Hyperkube ACI
+        Requires=k8s-assets.target
+        After=k8s-assets.target
+        [Service]
+        Environment=KUBELET_VERSION=v1.4.5_coreos.0
+        Environment="RKT_OPTS=--volume dns,kind=host,source=/etc/resolv.conf \
+          --mount volume=dns,target=/etc/resolv.conf \
+          --volume var-log,kind=host,source=/var/log \
+          --mount volume=var-log,target=/var/log"
+        ExecStartPre=/usr/bin/mkdir -p /etc/kubernetes/manifests
+        ExecStartPre=/usr/bin/mkdir -p /var/log/containers
+        ExecStart=/usr/lib/coreos/kubelet-wrapper \
+          --hostname-override={{.request.query.uuid}} \
+          --api-servers={{.k8s_controller_endpoint}} \
+          --register-node=true \
+          --cni-conf-dir=/etc/kubernetes/cni/net.d \
+          --network-plugin=cni \
+          --allow-privileged=true \
+          --config=/etc/kubernetes/manifests \
+          --cluster_dns={{.k8s_dns_service_ip}} \
+          --cluster_domain=cluster.local \
+          --kubeconfig=/etc/kubernetes/ssl/kubeconfig
+        Restart=always
+        RestartSec=10
+        [Install]
+        WantedBy=multi-user.target
+
+storage:
+  {{ if index . "pxe" }}
+  disks:
+    - device: /dev/sda
+      wipe_table: true
+      partitions:
+        - label: ROOT
+  filesystems:
+    - name: root
+      mount:
+        device: "/dev/sda1"
+        format: "ext4"
+        create:
+          force: true
+          options:
+            - "-LROOT"
+  {{end}}
+  files:
+    - path: /etc/kubernetes/cni/net.d/10-flannel.conf
+      filesystem: root
+      contents:
+        inline: |
+          {
+              "name": "podnet",
+              "type": "flannel",
+              "delegate": {
+                  "isDefaultGateway": true
+              }
+          }
+    - path: /etc/kubernetes/cni/docker_opts_cni.env
+      filesystem: root
+      contents:
+        inline: |
+          DOCKER_OPT_BIP=""
+          DOCKER_OPT_IPMASQ=""
+    - path: /etc/kubernetes/manifests/kube-proxy.yaml
+      filesystem: root
+      contents:
+        inline: |
+          apiVersion: v1
+          kind: Pod
+          metadata:
+            name: kube-proxy
+            namespace: kube-system
+          spec:
+            hostNetwork: true
+            containers:
+            - name: kube-proxy
+              image: quay.io/coreos/hyperkube:v1.4.5_coreos.0
+              command:
+              - /hyperkube
+              - proxy
+              - --master={{.k8s_controller_endpoint}}
+              - --kubeconfig=/etc/kubernetes/ssl/kubeconfig
+              securityContext:
+                privileged: true
+              volumeMounts:
+                - mountPath: /etc/ssl/certs
+                  name: "ssl-certs"
+                - mountPath: /etc/kubernetes/ssl
+                  name: "etc-kube-ssl"
+                  readOnly: true
+            volumes:
+              - name: "ssl-certs"
+                hostPath:
+                  path: "/usr/share/ca-certificates"
+              - name: "etc-kube-ssl"
+                hostPath:
+                  path: "/etc/kubernetes/ssl"
+    - path: /etc/flannel/options.env
+      filesystem: root
+      contents:
+        inline: |
+          FLANNELD_ETCD_ENDPOINTS={{.k8s_etcd_endpoints}}
+
+{{ if index . "ssh_authorized_keys" }}
+passwd:
+  users:
+    - name: core
+      ssh_authorized_keys:
+        {{ range $element := .ssh_authorized_keys }}
+        - {{$element}}
+        {{end}}
+{{end}}

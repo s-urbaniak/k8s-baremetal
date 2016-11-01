@@ -1,0 +1,11 @@
+{
+  "id": "coreos-install",
+  "name": "CoreOS Install",
+  "profile": "install-reboot",
+  "metadata": {
+    "coreos_channel": "beta",
+    "coreos_version": "1185.2.0",
+    "ignition_endpoint": "http://bootcfg.k8s:8080/ignition",
+    "baseurl": "http://bootcfg.k8s:8080/assets/coreos"
+  }
+}

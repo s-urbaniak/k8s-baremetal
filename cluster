@@ -1,0 +1,52 @@
+#!/bin/sh
+
+function main {
+    case "$1" in
+        "bootcfg") bootcfg;;
+        "dnsmasq") dnsmasq;;
+        "tls") tls;;
+        "create-master") createMaster;;
+        "create-worker") createWorker "${2}";;
+    esac
+}
+
+function tls {
+    bootkube render \
+        --asset-dir=assets/bootkube \
+        --api-servers=https://172.15.0.10:443 \
+        --etcd-servers=http://master.k8s:2379 \
+        --api-server-alt-names=DNS=master.k8s,IP=172.15.0.10
+    mv assets/bootkube/tls assets/tls
+    mv assets/bootkube/auth/kubeconfig assets/tls/
+}
+
+function bootcfg {
+    rkt run \
+    quay.io/coreos/bootcfg:latest \
+    --net=metal0:IP=172.15.0.2 \
+    --mount volume=data,target=/var/lib/bootcfg \
+    --volume data,kind=host,source=$PWD \
+    -- \
+    -address=0.0.0.0:8080 \
+    -log-level=debug
+}
+
+function dnsmasq {
+    rkt run \
+    coreos.com/dnsmasq:v0.3.0 \
+    --net=metal0:IP=172.15.0.3 \
+    --mount volume=config,target=/etc/dnsmasq.conf \
+    --volume config,kind=host,source=$PWD/dnsmasq/metal0.conf
+}
+
+COMMON_VIRT_OPTS="--memory=1024 --vcpus=1 --pxe --disk pool=default,size=6 --os-type=linux --os-variant=generic --noautoconsole"
+
+function createMaster {
+    virt-install --name master --network=bridge:metal0,mac=52:54:00:a1:9c:ae $COMMON_VIRT_OPTS --boot=hd,network
+}
+
+function createWorker {
+    virt-install --name="$1" --network=bridge:metal0 $COMMON_VIRT_OPTS --boot=hd,network
+}
+
+main $@
