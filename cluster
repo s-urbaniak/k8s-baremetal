@@ -11,11 +11,18 @@ function main {
 }
 
 function tls {
-    bootkube render \
-        --asset-dir=assets/bootkube \
-        --api-servers=https://172.15.0.10:443 \
-        --etcd-servers=http://master.k8s:2379 \
-        --api-server-alt-names=DNS=master.k8s,IP=172.15.0.10
+    rkt run quay.io/coreos/bootkube:v0.2.4 \
+          --insecure-options=image \
+          --volume=target,kind=host,source="${PWD}" \
+          --mount volume=target,target=/target \
+          --net=none \
+          --exec=/bootkube \
+          -- render \
+          --asset-dir=/target/assets/bootkube \
+          --api-servers=https://172.15.0.10:443 \
+          --etcd-servers=http://master.k8s:2379 \
+          --api-server-alt-names=DNS=master.k8s,IP=172.15.0.10
+
     mv assets/bootkube/tls assets/tls
     mv assets/bootkube/auth/kubeconfig assets/tls/
 }
