@@ -1,3 +1,12 @@
+## Introduction
+
+This provisions a CoreOS based Kubernetes cluster using [bootcfg](https://github.com/coreos/coreos-baremetal/blob/master/Documentation/bootcfg.md).
+
+## Prerequisites 
+
+- rkt
+- libvirt/virt-install (KVM)
+
 ## Installation
 
 1. Download CoreOS assets
