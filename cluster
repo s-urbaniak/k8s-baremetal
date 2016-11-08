@@ -6,6 +6,7 @@ function main {
         "dnsmasq") dnsmasq;;
         "tls") tls;;
         "create-master") createMaster;;
+        "create-ingress") createIngress;;
         "create-worker") createWorker "${2}";;
     esac
 }
@@ -50,6 +51,10 @@ COMMON_VIRT_OPTS="--memory=1024 --vcpus=1 --pxe --disk pool=default,size=6 --os-
 
 function createMaster {
     virt-install --name master --network=bridge:metal0,mac=52:54:00:a1:9c:ae $COMMON_VIRT_OPTS --boot=hd,network
+}
+
+function createIngress {
+    virt-install --name ingress --network=bridge:metal0,mac=52:54:00:b2:2f:86 $COMMON_VIRT_OPTS --boot=hd,network
 }
 
 function createWorker {
