@@ -32,7 +32,6 @@ spec:
         ports:
         - name: http
           containerPort: 80
-          hostPort: 80
         - name: admin
           containerPort: 8080
         args:
@@ -68,3 +67,18 @@ spec:
           backend:
             serviceName: traefik-ingress
             servicePort: 8080
+---
+apiVersion: extensions/v1beta1
+kind: Ingress
+metadata:
+ name: kubernetes-dashboard-ingress
+ namespace: kube-system
+spec:
+ rules:
+   - host: dashboard.k8s
+     http:
+       paths:
+         - path: /
+           backend:
+             serviceName: kubernetes-dashboard
+             servicePort: 80
