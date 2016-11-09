@@ -9,32 +9,32 @@ This provisions a CoreOS based Kubernetes cluster using [bootcfg](https://github
 
 ## Installation
 
-1. Download CoreOS assets
+Download CoreOS assets
 
 ```
 $ ./get-coreos beta 1185.2.0 ./assets
 ```
 
-2. Generate tls assets
+Generate tls assets
 
 ```
 # ./cluster tls
 ```
 
-3. Run bootcfg, and dnsmasq
+Run bootcfg, and dnsmasq
 
 ```
 # systemd-run --unit=k8s-dnsmasq -p WorkingDirectory=$(pwd) $(pwd)/cluster dnsmasq
 # systemd-run --unit=k8s-bootcfg -p WorkingDirectory=$(pwd) $(pwd)/cluster bootcfg
 ```
 
-4. Create master node
+Create master node
 
 ```
 # ./cluster create-master
-````
+```
 
-5. Create worker node
+Create worker node
 
 ```
 # ./cluster create-worker workerN
