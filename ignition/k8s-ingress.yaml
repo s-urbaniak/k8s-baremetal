@@ -67,7 +67,7 @@ systemd:
           --cluster_domain=cluster.local \
           --kubeconfig=/etc/kubernetes/ssl/kubeconfig \
           --register-schedulable=false \
-          --node-labels=ingress
+          --node-labels=role=ingress
         Restart=always
         RestartSec=10
         [Install]
