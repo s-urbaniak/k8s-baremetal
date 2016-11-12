@@ -18,7 +18,7 @@ spec:
       terminationGracePeriodSeconds: 60
       hostNetwork: true
       nodeSelector:
-        role: ingress
+        ingress: true
       containers:
       - image: traefik:v1.1.0-rc3
         name: traefik-ingress-lb

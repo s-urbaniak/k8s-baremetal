@@ -72,14 +72,14 @@ systemd:
         ExecStartPre=/usr/bin/systemctl is-active flanneld.service
         ExecStart=/usr/lib/coreos/kubelet-wrapper \
           --api-servers=http://127.0.0.1:8080 \
-          --register-schedulable=true \
           --cni-conf-dir=/etc/kubernetes/cni/net.d \
           --network-plugin=cni \
           --allow-privileged=true \
           --config=/etc/kubernetes/manifests \
           --hostname-override={{.domain_name}} \
           --cluster_dns={{.k8s_dns_service_ip}} \
-          --cluster_domain=cluster.local
+          --cluster_domain=cluster.local \
+          --node-labels=master=true
         Restart=always
         RestartSec=10
         [Install]
