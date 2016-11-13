@@ -9,6 +9,10 @@ This provisions a CoreOS based Kubernetes cluster using [bootcfg](https://github
 
 ## Installation
 
+```
+# cp net.d/20-metal.conf /etc/rkt/net.d
+```
+
 Download CoreOS assets
 
 ```
