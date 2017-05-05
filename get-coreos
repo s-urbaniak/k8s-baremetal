@@ -5,9 +5,9 @@ set -eou pipefail
 
 GPG=${GPG:-/usr/bin/gpg}
 
-CHANNEL=${1:-"beta"}
-VERSION=${2:-"1185.1.0"}
-DEST_DIR=${3:-"$PWD/examples/assets"}
+CHANNEL=${1:-"stable"}
+VERSION=${2:-"1353.7.0"}
+DEST_DIR=${3:-"$PWD/assets"}
 DEST=$DEST_DIR/coreos/$VERSION
 BASE_URL=https://$CHANNEL.release.core-os.net/amd64-usr/$VERSION
 

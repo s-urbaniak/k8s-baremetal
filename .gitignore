@@ -1,1 +1,4 @@
 /assets
+terraform.tfstate
+matchbox/
+terraform.tfstate.backup

@@ -1,11 +1,12 @@
 ## Introduction
 
-This provisions a CoreOS based Kubernetes cluster using [bootcfg](https://github.com/coreos/coreos-baremetal/blob/master/Documentation/bootcfg.md).
+This provides the possibility to provision a CoreOS based Kubernetes cluster using the [Tectonic installer](https://github.com/coreos/tectonic-installer) and the bare metal provider leveraging [matchbox](https://github.com/matchbox).
 
 ## Prerequisites 
 
 - rkt
 - libvirt/virt-install (KVM)
+- terraform for provisioning matchbox certificates
 
 ## Installation
 
@@ -19,43 +20,29 @@ Download CoreOS assets
 $ ./get-coreos beta 1185.2.0 ./assets
 ```
 
-Generate tls assets
+Generate matchbox tls assets
 
 ```
-# ./cluster tls
+# ./cluster certs
 ```
 
-Run bootcfg, and dnsmasq
+Run matchbox and dnsmasq
 
 ```
-# systemd-run --unit=k8s-dnsmasq -p WorkingDirectory=$(pwd) $(pwd)/cluster dnsmasq
-# systemd-run --unit=k8s-bootcfg -p WorkingDirectory=$(pwd) $(pwd)/cluster bootcfg
+# ./cluster matchbox
 ```
 
-Create master node
+Create nodes
 
 ```
-# ./cluster create-master
+# ./cluster create-nodes
 ```
-
-Create worker node
-
-```
-# ./cluster create-worker workerN
-```
-
-Replace `workerN` with `worker1`, `worker2`, ...
-
 ## IP addresses
 
 ```
-172.15.0.1   host bridge IP
-172.15.0.2   bootcfg server
-172.15.0.3   dnsmasq server
-172.15.0.10  k8s master node
-
-172.15.0.50-
-172.15.0.99  dhcp IP range for k8s worker nodes
-
-172.15.0.100 traefik ingress
+10.1.1.1     host bridge IP
+10.1.1.2     matchbox server
+10.1.1.3     dnsmasq server
+10.1.1.10    master1
+10.1.1.11    worker1
 ```

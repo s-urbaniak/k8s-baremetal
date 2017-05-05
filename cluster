@@ -2,63 +2,57 @@
 
 function main {
     case "$1" in
-        "bootcfg") bootcfg;;
-        "dnsmasq") dnsmasq;;
-        "tls") tls;;
-        "create-master") createMaster;;
-        "create-ingress") createIngress;;
-        "create-worker") createWorker "${2}";;
+        "certs") certs;;
+        "stop") stop;;
+        "matchbox") matchbox;;
+        "create-nodes") createNodes;;
     esac
 }
 
-function tls {
-    rkt run quay.io/coreos/bootkube:v0.2.4 \
-          --insecure-options=image \
-          --volume=target,kind=host,source="${PWD}" \
-          --mount volume=target,target=/target \
-          --net=none \
-          --exec=/bootkube \
-          -- render \
-          --asset-dir=/target/assets/bootkube \
-          --api-servers=https://172.15.0.10:443 \
-          --etcd-servers=http://master.k8s:2379 \
-          --api-server-alt-names=DNS=master.k8s,IP=172.15.0.10
-
-    mv assets/bootkube/tls assets/tls
-    mv assets/bootkube/auth/kubeconfig assets/tls/
+function certs {
+    terraform apply
 }
 
-function bootcfg {
-    rkt run \
-    quay.io/coreos/bootcfg:latest \
-    --net=metal0:IP=172.15.0.2 \
-    --mount volume=data,target=/var/lib/bootcfg \
-    --volume data,kind=host,source=$PWD \
-    -- \
-    -address=0.0.0.0:8080 \
-    -log-level=debug
+function stop {
+    systemctl stop matchbox matchbox-dnsmasq
+    rkt gc --grace-period=0s
+    systemctl reset-failed
 }
 
-function dnsmasq {
-    rkt run \
-    coreos.com/dnsmasq:v0.3.0 \
-    --net=metal0:IP=172.15.0.3 \
-    --mount volume=config,target=/etc/dnsmasq.conf \
-    --volume config,kind=host,source=$PWD/dnsmasq/metal0.conf
+function matchbox {
+    systemd-run --unit=matchbox -p WorkingDirectory=$(pwd) \
+      rkt run \
+      --insecure-options=image,ondisk \
+      --stage1-path=/usr/lib/rkt/stage1-images/stage1-coreos.aci \
+      --net=metal0:IP=10.1.1.2 \
+      quay.io/coreos/matchbox:latest \
+      --mount volume=assets,target=/var/lib/matchbox/assets \
+      --volume assets,kind=host,source=$PWD/assets \
+      --mount volume=etc-matchbox,target=/etc/matchbox \
+      --volume etc-matchbox,kind=host,source=$PWD/matchbox \
+      -- \
+      -address=0.0.0.0:8080 \
+      -rpc-address=0.0.0.0:8081 \
+      -log-level=debug
+
+    systemd-run --unit=matchbox-dnsmasq -p WorkingDirectory=$(pwd) \
+      rkt run \
+      --insecure-options=image,ondisk \
+      --stage1-path=/usr/lib/rkt/stage1-images/stage1-coreos.aci \
+      --net=metal0:IP=10.1.1.3 \
+      quay.io/coreos/dnsmasq \
+      --caps-retain=CAP_NET_ADMIN,CAP_NET_BIND_SERVICE \
+      --mount volume=config,target=/etc/dnsmasq.conf \
+      --volume config,kind=host,source=$PWD/dnsmasq/metal0.conf \
+      --mount volume=resolv,target=/etc/resolv.dnsmasq \
+      --volume resolv,kind=host,source=$PWD/dnsmasq/resolv.dnsmasq
 }
 
 COMMON_VIRT_OPTS="--memory=1024 --vcpus=1 --pxe --disk pool=default,size=6 --os-type=linux --os-variant=generic --noautoconsole"
 
-function createMaster {
-    virt-install --name master --network=bridge:metal0,mac=52:54:00:a1:9c:ae $COMMON_VIRT_OPTS --boot=hd,network
-}
-
-function createIngress {
-    virt-install --name ingress --network=bridge:metal0,mac=52:54:00:b2:2f:86 $COMMON_VIRT_OPTS --boot=hd,network
-}
-
-function createWorker {
-    virt-install --name="$1" --network=bridge:metal0 $COMMON_VIRT_OPTS --boot=hd,network
+function createNodes {
+    virt-install --name master1 --network=bridge:metal0,mac=0a:0b:0c:0d:0e:10 $COMMON_VIRT_OPTS --boot=hd,network
+    virt-install --name worker1 --network=bridge:metal0,mac=0a:0b:0c:0d:0e:11 $COMMON_VIRT_OPTS --boot=hd,network
 }
 
 main $@
