@@ -25,6 +25,7 @@ function matchbox {
       --insecure-options=image,ondisk \
       --stage1-path=/usr/lib/rkt/stage1-images/stage1-coreos.aci \
       --net=metal0:IP=10.1.1.2 \
+      --dns=10.1.1.3 \
       quay.io/coreos/matchbox:latest \
       --mount volume=assets,target=/var/lib/matchbox/assets \
       --volume assets,kind=host,source=$PWD/assets \
@@ -40,15 +41,18 @@ function matchbox {
       --insecure-options=image,ondisk \
       --stage1-path=/usr/lib/rkt/stage1-images/stage1-coreos.aci \
       --net=metal0:IP=10.1.1.3 \
+      --dns=10.1.1.3 \
       quay.io/coreos/dnsmasq \
       --caps-retain=CAP_NET_ADMIN,CAP_NET_BIND_SERVICE \
       --mount volume=config,target=/etc/dnsmasq.conf \
       --volume config,kind=host,source=$PWD/dnsmasq/metal0.conf \
       --mount volume=resolv,target=/etc/resolv.dnsmasq \
-      --volume resolv,kind=host,source=$PWD/dnsmasq/resolv.dnsmasq
+      --volume resolv,kind=host,source=$PWD/dnsmasq/resolv.dnsmasq \
+      --mount volume=hosts,target=/etc/hosts.dnsmasq \
+      --volume hosts,kind=host,source=$PWD/dnsmasq/hosts.dnsmasq
 }
 
-COMMON_VIRT_OPTS="--memory=1024 --vcpus=1 --pxe --disk pool=default,size=6 --os-type=linux --os-variant=generic --noautoconsole"
+COMMON_VIRT_OPTS="--memory=4096 --vcpus=1 --pxe --disk pool=default,size=6 --os-type=linux --os-variant=generic --noautoconsole"
 
 function createNodes {
     virt-install --name master1 --network=bridge:metal0,mac=0a:0b:0c:0d:0e:10 $COMMON_VIRT_OPTS --boot=hd,network
