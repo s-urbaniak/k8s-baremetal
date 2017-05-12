@@ -3,9 +3,10 @@
 function main {
     case "$1" in
         "certs") certs;;
+        "start") start;;
         "stop") stop;;
-        "matchbox") matchbox;;
         "create-nodes") createNodes;;
+        "start-nginx") startNginx;;
     esac
 }
 
@@ -14,12 +15,18 @@ function certs {
 }
 
 function stop {
-    systemctl stop matchbox matchbox-dnsmasq
+    systemctl stop \
+              matchbox \
+              matchbox-dnsmasq \
+              matchbox-registry-quay \
+              matchbox-registry-gcr \
+              matchbox-nginx
+
     rkt gc --grace-period=0s
     systemctl reset-failed
 }
 
-function matchbox {
+function start {
     systemd-run --unit=matchbox -p WorkingDirectory=$(pwd) \
       rkt run \
       --insecure-options=image,ondisk \
@@ -30,7 +37,7 @@ function matchbox {
       --mount volume=assets,target=/var/lib/matchbox/assets \
       --volume assets,kind=host,source=$PWD/assets \
       --mount volume=etc-matchbox,target=/etc/matchbox \
-      --volume etc-matchbox,kind=host,source=$PWD/matchbox \
+      --volume etc-matchbox,kind=host,source=$PWD/certs \
       -- \
       -address=0.0.0.0:8080 \
       -rpc-address=0.0.0.0:8081 \
@@ -50,13 +57,69 @@ function matchbox {
       --volume resolv,kind=host,source=$PWD/dnsmasq/resolv.dnsmasq \
       --mount volume=hosts,target=/etc/hosts.dnsmasq \
       --volume hosts,kind=host,source=$PWD/dnsmasq/hosts.dnsmasq
+
+    startNginx
+
+    local i=0
+    while true; do
+        (( i++ )) && (( i == 100 )) && echo "giving up" && exit 1
+        echo "looking up ..."
+        nslookup registry.k8s
+        if [ "$?" -eq 0 ]; then
+            break
+        fi
+    done
+
+    startRegistry quay 10.1.1.6
+    startRegistry gcr 10.1.1.7
+}
+
+function startNginx {
+    systemd-run --unit=matchbox-nginx \
+      -p WorkingDirectory=$(pwd) \
+      rkt run \
+      --insecure-options=image,ondisk \
+      --stage1-path=/usr/lib/rkt/stage1-images/stage1-coreos.aci \
+      --net=metal0:IP=10.1.1.5 \
+      --dns=10.1.1.3 \
+      docker://nginx:1.13.0 \
+      --mount volume=registry,target=/etc/nginx/nginx.conf \
+      --volume registry,kind=host,source=$PWD/registry/nginx.conf
+
+}
+
+function startRegistry {
+    systemd-run --unit=matchbox-registry-"${1}" \
+      -p WorkingDirectory=$(pwd) \
+      rkt run \
+      --insecure-options=image,ondisk \
+      --stage1-path=/usr/lib/rkt/stage1-images/stage1-coreos.aci \
+      --net=metal0:IP="${2}" \
+      --dns=10.1.1.3 \
+      docker://registry-1.docker.io/library/registry:2 \
+      \
+      --mount volume=registry,target=/var/lib/registry \
+      --volume registry,kind=host,source=$PWD/registry/"${1}" \
+      \
+      --mount volume=config,target=/etc/docker/registry/config.yml \
+      --volume config,kind=host,source=$PWD/registry/"${1}".yaml
+}
+
+function stopRegistry {
+    systemctl stop \
+              matchbox-registry-quay \
+              matchbox-registry-gcr \
+              matchbox-nginx
+
+    rkt gc --grace-period=0s
+    systemctl reset-failed
 }
 
 COMMON_VIRT_OPTS="--memory=4096 --vcpus=1 --pxe --disk pool=default,size=6 --os-type=linux --os-variant=generic --noautoconsole"
 
 function createNodes {
     virt-install --name master1 --network=bridge:metal0,mac=0a:0b:0c:0d:0e:10 $COMMON_VIRT_OPTS --boot=hd,network
-    virt-install --name worker1 --network=bridge:metal0,mac=0a:0b:0c:0d:0e:11 $COMMON_VIRT_OPTS --boot=hd,network
+    virt-install --name worker1 --network=bridge:metal0,mac=0a:0b:0c:0d:0e:50 $COMMON_VIRT_OPTS --boot=hd,network
 }
 
 main $@

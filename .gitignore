@@ -2,3 +2,5 @@
 terraform.tfstate
 matchbox/
 terraform.tfstate.backup
+/certs/*
+/registry/*

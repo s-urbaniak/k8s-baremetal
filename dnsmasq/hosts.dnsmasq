@@ -1,2 +1,17 @@
+10.1.1.2 matchbox.k8s
+
+10.1.1.5 registry.k8s
+10.1.1.5 quay-proxy.k8s
+10.1.1.5 gcr-proxy.k8s
+
 10.1.1.10 api.k8s
-10.1.1.11 cluster.k8s
+
+10.1.1.10 master1.k8s
+10.1.1.11 master2.k8s
+10.1.1.12 master3.k8s
+
+10.1.1.50 cluster.k8s
+
+10.1.1.50 worker1.k8s
+10.1.1.51 worker2.k8s
+10.1.1.52 worker3.k8s
