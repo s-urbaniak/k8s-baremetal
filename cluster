@@ -64,7 +64,7 @@ function start {
     while true; do
         (( i++ )) && (( i == 100 )) && echo "giving up" && exit 1
         echo "looking up ..."
-        nslookup registry.k8s
+        nslookup registry.k8s 10.1.1.3
         if [ "$?" -eq 0 ]; then
             break
         fi
@@ -115,7 +115,7 @@ function stopRegistry {
     systemctl reset-failed
 }
 
-COMMON_VIRT_OPTS="--memory=4096 --vcpus=1 --pxe --disk pool=default,size=6 --os-type=linux --os-variant=generic --noautoconsole"
+COMMON_VIRT_OPTS="--memory=4096 --vcpus=1 --pxe --disk pool=default,size=12 --os-type=linux --os-variant=generic --noautoconsole"
 
 function createNodes {
     virt-install --name master1 --network=bridge:metal0,mac=0a:0b:0c:0d:0e:10 $COMMON_VIRT_OPTS --boot=hd,network
