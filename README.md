@@ -44,5 +44,6 @@ Create nodes
 10.1.1.2     matchbox server
 10.1.1.3     dnsmasq server
 10.1.1.10    master1
-10.1.1.11    worker1
+10.1.1.50    worker1
+10.1.1.51    worker2
 ```
